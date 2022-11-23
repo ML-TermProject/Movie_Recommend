@@ -3,11 +3,16 @@ import numpy as np
 from fuzzywuzzy import fuzz
 from scipy.sparse import csr_matrix
 from sklearn.neighbors import NearestNeighbors
+from surprise.dataset import DatasetAutoFolds, Reader
+from surprise import BaselineOnly, SVD
+from surprise.model_selection import cross_validate
+import warnings
+warnings.filterwarnings(action='ignore')
 
 pd.options.display.max_columns = None
 pd.options.display.width = None
 
-
+### For Item-Based
 # Get the closest match with the input movie
 def fuzzy_matching(mapper, fav_movie, verbose=True):
     match_tuple = []
@@ -106,15 +111,119 @@ def item_based(df_credit, df_rating, my_favorite):
         n_recommendations=10)
 
 
+### For User-Based
+'''
+parameter
+    df_rating: rating (it has information of 'userId', 'movieId', 'rating')
+    df_credit: credit (it has information of 'title', 'movieId')
+    userId: user ID to be used in user-based collaborative filtering
+return
+    [list] movies that are not rated by the according user
+'''
+def get_unseen(df_rating, df_credit, userId):
+    seen_movies = df_rating[df_rating['userId'] == userId]['movieId'].tolist()
+    total_movies = df_credit['movieId'].tolist()
+    unseen_movies = [movie for movie in total_movies if movie not in seen_movies]
+    print(
+        f'\nnumber of movies viewed by user {userId}: {len(seen_movies)}\nrecommended number of movies: {len(unseen_movies)}\ntotal number of movies: {len(total_movies)}')
+    return unseen_movies
+
+
+# function to help sorting predicted rating in descending order
+def sortkey_est(pred):
+    return pred.est
+
+
+'''
+parameter
+    df_credit: credit (it has information of 'title', 'movieId')
+    Algo: recommendation algorithm {BaselineOnly, SVD}
+    userId: user ID to be used in user-based collaborative filtering
+    unseen_movies: movies that are not rated by the according user
+    top_n: number of top rated movies to recommend
+return
+    [list] information(movieId, expected rating, title) of top_n movies to recommend
+'''
+def recomm_movie(df_credit, Algo, userId, unseen_movies, top_n=10):
+    # repeat predict() of the algorithm object to non-rated movies
+    predictions = [Algo.predict(str(userId), str(movieId)) for movieId in unseen_movies]
+
+    # sort predicted rating in descending order and extract top_n values
+    predictions.sort(key=sortkey_est, reverse=True)
+    top_predictions = predictions[:top_n]
+
+    # get information from movies extracted with top_n (movieId, expected rating, title)
+    top_movie_ids = [int(pred.iid) for pred in top_predictions]
+    top_movie_ratings = [pred.est for pred in top_predictions]
+    top_movie_titles = []
+    for i in top_movie_ids:
+        top_movie_titles.append(df_credit.loc[i]['title'])
+
+    top_movie_preds = [(ids, rating, title) for ids, rating, title in
+                       zip(top_movie_ids, top_movie_ratings, top_movie_titles)]
+
+    return top_movie_preds
+
+
+# function for algorithm 'BaselineOnly'
+def Baseline(data):
+    bsl_options = {
+        "method": "sgd",
+        "learning_rate": 0.005
+    }
+    Algo = BaselineOnly(bsl_options=bsl_options)
+    Algo.fit(data)
+    return Algo
+
+
+'''
+parameter
+    df_credit: credit (it has information of 'title', 'movieId')
+    df_rating: rating (it has information of 'userId', 'movieId', 'rating')
+    algo: recommendation algorithm {BaselineOnly, SVD}
+    userId: user ID to be used in user-based collaborative filtering
+output
+'''
+def user_based(df_credit, df_rating, algo, userId):
+    # create a file with both index and header removed
+    df_rating.to_csv('ratings_small_noh.csv', index=False, header=False)
+    reader = Reader(line_format='user item rating', sep=',', rating_scale=(0.5, 5))
+    data_folds = DatasetAutoFolds(ratings_file='ratings_small_noh.csv', reader=reader)
+    train = data_folds.build_full_trainset()
+
+    if algo == "baseline":  # if the input algorithm is 'BaselineOnly'
+        Algo = Baseline(train)
+    elif algo == "SVD":  # if the input algorithm is 'SVD'
+        Algo = SVD(n_epochs=20, n_factors=50, random_state=42)
+
+    Algo.fit(train)
+
+    cross_validate(Algo, data_folds, measures=['RMSE', 'MAE'], cv=5, verbose=True)
+
+    # get non-rated movie list and top_n movies of expected rating to recommend
+    unseen_lst = get_unseen(df_rating, df_credit, userId)
+    top_movies_preds = recomm_movie(df_credit, Algo, userId, unseen_lst, top_n=10)
+
+    print("\n>> For User {}".format(userId))
+    print("<Top 10 Recommended Movies>")
+    i = 1
+    for top_movie in top_movies_preds:
+        print(i)
+        print("title: ", top_movie[2])
+        print("estimated rating: ", top_movie[1])
+        print()
+        i += 1
+
+
 # Read dataset for collaborative filtering (item/user-based)
 def read_file():
     # read csv files
-    metadata = pd.read_csv("../data/movies/movies_metadata.csv",
+    metadata = pd.read_csv("./movies_metadata.csv",
                            usecols=['id', 'imdb_id', 'original_title'],
                            dtype={'id': 'str', 'imdb': 'str', 'original_title': 'str'})
-    link = pd.read_csv("../data/movies/links_small.csv",
+    link = pd.read_csv("./links_small.csv",
                        usecols=['movieId', 'imdbId', 'tmdbId'])
-    rating = pd.read_csv("../data/movies/ratings_small.csv",
+    rating = pd.read_csv("./ratings_small.csv",
                          usecols=['userId', 'movieId', 'rating'],
                          dtype={'userId': 'int32', 'movieId': 'int32', 'rating': 'float32'})
 
@@ -138,4 +247,19 @@ def read_file():
 
 credit, rating = read_file()  # Read dataset for Collaborative Filtering
 
-item_based(credit, rating, "Iron Man")  # Collaborative Filtering (item-based)
+### Test
+# Collaborative Filtering (item-based)
+item_based(credit, rating, "Iron Man")
+print("-------------------------------------------------------------------\n")
+
+# Collaborative Filtering (user-based)
+print("==== User-Based Recommendation (Collaborative Filtering) ====\n")
+print(">> algorithm: BaselineOnly")
+print(">> userId: 9\n")
+user_based(credit, rating, 'baseline', 9) # algorithm: BaselineOnly, userId: 9
+print("-------------------------------------------------------------------\n")
+
+print(">> algorithm: SVD")
+print(">> userId: 3\n")
+user_based(credit, rating, 'SVD', 3) # algorithm: SVD, userId: 3
+print("-------------------------------------------------------------------\n")
