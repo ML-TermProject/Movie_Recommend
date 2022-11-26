@@ -15,10 +15,10 @@ from surprise import Reader, Dataset, SVD, accuracy
 from surprise.model_selection import train_test_split
 import warnings; warnings.simplefilter('ignore')
 
-links_small = pd.read_csv('../input/links_small.csv')
+links_small = pd.read_csv('./input/links_small.csv')
 links_small = links_small[links_small['tmdbId'].notnull()]['tmdbId'].astype('int')
 
-md = pd. read_csv('../input/movies_metadata.csv')
+md = pd. read_csv('./input/movies_metadata.csv')
 
 md['genres'] = md['genres'].fillna('[]').apply(literal_eval).apply(lambda x: [i['name'] for i in x] if isinstance(x, list) else [])
 md['year'] = pd.to_datetime(md['release_date'], errors='coerce').apply(lambda x: str(x).split('-')[0] if x != np.nan else np.nan)
@@ -28,6 +28,7 @@ md['id'] = md['id'].astype('int')
 smd = md[md['id'].isin(links_small)]
 
 # =========Movie Description Based Recommender=========
+# =====================================================
 
 # null 값 처리
 smd['tagline'] = smd['tagline'].fillna('')
@@ -53,12 +54,18 @@ def get_recommendations(title):
     movie_indices = [i[0] for i in sim_scores]
     return titles.iloc[movie_indices]
 
+print("=========Movie Description Based Recommender=========")
+print(get_recommendations('Mean Girls'))
+print("=====================================================\n")
+
+# =====================================================
+
 # =========Metadata Based Recommender=========
 # 위의 추천 시스템은 단순히 Overview, Tagline만 보고 추천하는 것이기 때문에 별로임
 # 그래서 credit과 keyword를 column에 추가 (-> md.merge)
 
-credits = pd.read_csv('../input/credits.csv')
-keywords = pd.read_csv('../input/keywords.csv')
+credits = pd.read_csv('./input/credits.csv')
+keywords = pd.read_csv('./input/keywords.csv')
 
 keywords['id'] = keywords['id'].astype('int')
 credits['id'] = credits['id'].astype('int')
@@ -153,10 +160,9 @@ def improved_recommendations(title):
     qualified = qualified.sort_values('wr', ascending=False).head(10)
     return qualified
 
-
+print("=============Metadata Based Recommender=============")
 print(improved_recommendations('Mean Girls'))
-
-
+print("=====================================================\n")
 
 
 
