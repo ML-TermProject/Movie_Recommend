@@ -18,10 +18,10 @@ pd.options.display.width = None
 
 ### For Content-Based
 def read_file():
-    links_small = pd.read_csv('./input/links_small.csv')
+    links_small = pd.read_csv('./data/links_small.csv')
     links_small = links_small[links_small['tmdbId'].notnull()]['tmdbId'].astype('int')
 
-    md = pd.read_csv('./input/movies_metadata.csv')
+    md = pd.read_csv('./data/movies_metadata.csv')
     md['genres'] = md['genres'].fillna('[]').apply(literal_eval).apply(
         lambda x: [i['name'] for i in x] if isinstance(x, list) else [])
     md['year'] = pd.to_datetime(md['release_date'], errors='coerce').apply(
@@ -75,8 +75,8 @@ print("=====================================================\n")
 # 그래서 credit과 keyword를 column에 추가 (-> md.merge)
 
 def meta_based(md,smd):
-    credits = pd.read_csv('./input/credits.csv')
-    keywords = pd.read_csv('./input/keywords.csv')
+    credits = pd.read_csv('./data/credits.csv')
+    keywords = pd.read_csv('./data/keywords.csv')
 
     keywords['id'] = keywords['id'].astype('int')
     credits['id'] = credits['id'].astype('int')
@@ -311,8 +311,9 @@ def get_unseen(df_rating, df_credit, userId):
     seen_movies = df_rating[df_rating['userId'] == userId]['movieId'].tolist()
     total_movies = df_credit['movieId'].tolist()
     unseen_movies = [movie for movie in total_movies if movie not in seen_movies]
-    print(
-        f'\nnumber of movies viewed by user {userId}: {len(seen_movies)}\nrecommended number of movies: {len(unseen_movies)}\ntotal number of movies: {len(total_movies)}')
+    print(f'\n>> number of movies viewed by user {userId}: {len(seen_movies)}')
+    print(f'>> recommended number of movies: {len(unseen_movies)}')
+    print(f'>> total number of movies: {len(total_movies)}')
     return unseen_movies
 
 
@@ -373,9 +374,9 @@ output
 '''
 def user_based(df_credit, df_rating, algo, userId):
     # create a file with both index and header removed
-    df_rating.to_csv('ratings_small_noh.csv', index=False, header=False)
+    df_rating.to_csv('./data/ratings_small_noh.csv', index=False, header=False)
     reader = Reader(line_format='user item rating', sep=',', rating_scale=(0.5, 5))
-    data_folds = DatasetAutoFolds(ratings_file='ratings_small_noh.csv', reader=reader)
+    data_folds = DatasetAutoFolds(ratings_file='./data/ratings_small_noh.csv', reader=reader)
     train = data_folds.build_full_trainset()
 
     if algo == "baseline":  # if the input algorithm is 'BaselineOnly'
@@ -384,33 +385,27 @@ def user_based(df_credit, df_rating, algo, userId):
         Algo = SVD(n_epochs=20, n_factors=50, random_state=42)
 
     Algo.fit(train)
-
     cross_validate(Algo, data_folds, measures=['RMSE', 'MAE'], cv=5, verbose=True)
 
     # get non-rated movie list and top_n movies of expected rating to recommend
     unseen_lst = get_unseen(df_rating, df_credit, userId)
     top_movies_preds = recomm_movie(df_credit, Algo, userId, unseen_lst, top_n=10)
 
-    print("\n>> For User {}".format(userId))
-    print("<Top 10 Recommended Movies>")
+    print("\n>> Recommendations for User {}:".format(userId))
     i = 1
     for top_movie in top_movies_preds:
-        print(i)
-        print("title: ", top_movie[2])
-        print("estimated rating: ", top_movie[1])
-        print()
+        print(f'Rank {i} movie: "{top_movie[2]}" (with estimated rating of {round(top_movie[1],4)})')
         i += 1
-
 
 # Read dataset for collaborative filtering (item/user-based)
 def read_file():
     # read csv files
-    metadata = pd.read_csv("./input/movies_metadata.csv",
+    metadata = pd.read_csv("./data/movies_metadata.csv",
                            usecols=['id', 'imdb_id', 'original_title'],
                            dtype={'id': 'str', 'imdb': 'str', 'original_title': 'str'})
-    link = pd.read_csv("./input/links_small.csv",
+    link = pd.read_csv("./data/links_small.csv",
                        usecols=['movieId', 'imdbId', 'tmdbId'])
-    rating = pd.read_csv("./input/ratings_small.csv",
+    rating = pd.read_csv("./data/ratings_small.csv",
                          usecols=['userId', 'movieId', 'rating'],
                          dtype={'userId': 'int32', 'movieId': 'int32', 'rating': 'float32'})
 
