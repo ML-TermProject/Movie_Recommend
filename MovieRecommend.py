@@ -16,6 +16,7 @@ warnings.filterwarnings(action='ignore')
 pd.options.display.max_columns = None
 pd.options.display.width = None
 
+
 ### For Content-Based
 '''
 return
@@ -96,7 +97,7 @@ titles, indices, cosine_sim = description_based(smd)
 
 input_movie = 'Mean Girls'
 get_recommend_movie, sim_indices = get_recommendations(input_movie)
-print("=========Movie Description Based Recommender=========")
+print("========= Movie Description Based Recommender =========")
 print(">> Recommend a movie similar to \'{0}\'" .format(input_movie))
 for i in range(len(sim_indices)):
     print('Rank {0} movie: \"{1}\" (with similarity of {2})'.format(i + 1, get_recommend_movie[i], round(sim_indices[i], 3)))
@@ -184,6 +185,7 @@ def filter_keywords(x):
         if i in s:
             words.append(i)
     return words
+
 
 '''
 parameter
@@ -280,18 +282,24 @@ m, C = popularityNratings(md)
 input_movie = "Mean Girls"
 title_indices, wr_indices = improved_recommendations(input_movie)
 
-print("=============Metadata Based Recommender=============")
+print("============= Metadata Based Recommender =============")
 print(">> Recommend a movie similar to \'{0}\'" .format(input_movie))
 for i in range(len(title_indices)):
     print('Rank {0} movie: \"{1}\" (with weighted ratings of {2})'.format(i + 1, title_indices[i], round(wr_indices[i], 3)))
 print("=====================================================\n")
 
 
-
-
 ### For Item-Based
-# Get the closest match with the input movie
+'''
+parameter
+    mapper: KNN model
+    fav_movie: input movie for predict
+    verbose=True: hyperparameter
+return
+    [list] movies that are matched to input movie
+'''
 def fuzzy_matching(mapper, fav_movie, verbose=True):
+    # Get the closest match with the input movie
     match_tuple = []
 
     for title, idx in mapper.items():  # Get match
@@ -309,8 +317,16 @@ def fuzzy_matching(mapper, fav_movie, verbose=True):
     return match_tuple[0][1]  # Return the most matched movie
 
 
-# Recommendation model K-nearest neighbors
+'''
+parameter
+    mapper: KNN model
+    fav_movie: input movie for predict
+    verbose=True: hyperparameter
+return
+    [list] movies that are matched to input movie
+'''
 def make_recommendation(model_knn, data, mapper, fav_movie, n_recommendations):
+    # Recommendation model K-nearest neighbors
     model_knn.fit(data)  # train the model
     print("==== Item-Based Recommendation (Collaborative Filtering) =====")
     print('>> You say your favorite movie is {}\n'.format(fav_movie))
@@ -326,8 +342,15 @@ def make_recommendation(model_knn, data, mapper, fav_movie, n_recommendations):
         print('Rank {0} movie: \"{1}\" (with distance of {2})'.format(i + 1, reverse_mapper[idx], round(dist, 3)))
 
 
-# Preprocess the data for item-based Collaborative Filtering
+'''
+parameter
+    df_credit: credit (it has information of 'title', 'movieId')
+    df_rating: rating (it has information of 'userId', 'movieId', 'rating')
+return
+    [list] movie-user matrix and movie titles to index
+'''
 def process_data(df_credit, df_rating):
+    # Preprocess the data for item-based Collaborative Filtering
     num_users = len(df_rating.userId.unique())
     num_items = len(df_rating.movieId.unique())
     # print('>> There are {} unique users and {} unique movies in this data set\n'.format(num_users, num_items))
@@ -373,8 +396,14 @@ def process_data(df_credit, df_rating):
     return movie_user_mat, movie_to_idx
 
 
-# Recommendation System for collaborative filtering (item-based)
+'''
+parameter
+    df_credit: credit (it has information of 'title', 'movieId')
+    df_rating: rating (it has information of 'userId', 'movieId', 'rating')
+    my_favorite: input movie for predict
+'''
 def item_based(df_credit, df_rating, my_favorite):
+    # Recommendation System for collaborative filtering (item-based)
     user_matrix, movie_idx = process_data(df_credit, df_rating)  # Preprocess the data for item-based filtering
 
     model_knn = NearestNeighbors(metric='cosine', algorithm='brute', n_neighbors=20, n_jobs=-1)  # KNN Model
@@ -386,9 +415,6 @@ def item_based(df_credit, df_rating, my_favorite):
         fav_movie=my_favorite,
         mapper=movie_idx,
         n_recommendations=10)
-
-
-
 
 
 ### For User-Based
@@ -492,6 +518,7 @@ def user_based(df_credit, df_rating, algo, userId):
         print(f'Rank {i} movie: "{top_movie[2]}" (with estimated rating of {round(top_movie[1],4)})')
         i += 1
 
+
 # Read dataset for collaborative filtering (item/user-based)
 def read_file():
     # read csv files
@@ -527,19 +554,18 @@ credit, rating = read_file()  # Read dataset for Collaborative Filtering
 ### Test
 # Content-based Filtering
 
-
 # Collaborative Filtering (item-based)
 item_based(credit, rating, "Iron Man")
-print("-------------------------------------------------------------------\n")
+print("===================================================================\n")
 
 # Collaborative Filtering (user-based)
 print("==== User-Based Recommendation (Collaborative Filtering) ====\n")
 print(">> algorithm: BaselineOnly")
 print(">> userId: 9\n")
 user_based(credit, rating, 'baseline', 9) # algorithm: BaselineOnly, userId: 9
-print("-------------------------------------------------------------------\n")
+print("===================================================================\n")
 
 print(">> algorithm: SVD")
 print(">> userId: 3\n")
 user_based(credit, rating, 'SVD', 3) # algorithm: SVD, userId: 3
-print("-------------------------------------------------------------------\n")
+print("===================================================================\n")
