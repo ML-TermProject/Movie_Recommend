@@ -323,7 +323,7 @@ parameter
     data: user information data
     mapper: index for each movies
     fav_movie: input movie for predict
-    n_recommendations: 10 (nearest neighbor)
+    n_recommendations: 10 (nearest neighbors)
 '''
 def make_recommendation(model_knn, data, mapper, fav_movie, n_recommendations):
     # Recommendation model K-nearest neighbors
