@@ -319,11 +319,11 @@ def fuzzy_matching(mapper, fav_movie, verbose=True):
 
 '''
 parameter
-    mapper: KNN model
+    model_knn: KNN model
+    data: user information data
+    mapper: index for each movies
     fav_movie: input movie for predict
-    verbose=True: hyperparameter
-return
-    [list] movies that are matched to input movie
+    n_recommendations: 10 (nearest neighbor)
 '''
 def make_recommendation(model_knn, data, mapper, fav_movie, n_recommendations):
     # Recommendation model K-nearest neighbors
