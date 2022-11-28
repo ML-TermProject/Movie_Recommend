@@ -17,6 +17,12 @@ pd.options.display.max_columns = None
 pd.options.display.width = None
 
 ### For Content-Based
+'''
+return
+   links_small: Dataset of links_small.csv
+   md: Dataset of movies_metadata.csv
+   smd: links_small and md combined dataset
+'''
 def read_file():
     links_small = pd.read_csv('./data/links_small.csv')
     links_small = links_small[links_small['tmdbId'].notnull()]['tmdbId'].astype('int')
@@ -35,6 +41,14 @@ def read_file():
 
 
 # =========Movie Description Based Recommender=========
+'''
+parameter
+    smd: links_small and md combined dataset
+return
+    titles: Only title columns in smd dataset
+    indices: Save titles as a series
+    cosine_sim: Cosine similarity calculated using linear kernel
+'''
 def description_based(smd):
     smd['tagline'] = smd['tagline'].fillna('')
     smd['description'] = smd['overview'] + smd['tagline']
@@ -53,27 +67,51 @@ def description_based(smd):
     return titles, indices, cosine_sim
 
 
+'''
+parameter
+    title: Movie title
+return
+    movie_title_indices: List of 10 films with high similarities to parameters 
+    sim_indices: Each similarity of 10 films with high similarity to the parameter
+'''
 def get_recommendations(title):
     idx = indices[title]
     sim_scores = list(enumerate(cosine_sim[idx]))
     sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
-    sim_scores = sim_scores[1:31]
+    sim_scores = sim_scores[1:11]
     movie_indices = [i[0] for i in sim_scores]
-    return titles.iloc[movie_indices]
+
+    pd.DataFrame(titles, columns=['A'])
+    movie_title_indices = []
+    sim_indices = []
+    for i in range(len(titles.iloc[movie_indices])):
+        movie_title_indices.append(titles.iloc[movie_indices].iloc[i])
+        sim_indices.append(sim_scores[i][1])
+
+    return movie_title_indices, sim_indices
 
 
 links_small, md, smd = read_file()
 titles, indices, cosine_sim = description_based(smd)
 
+input_movie = 'Mean Girls'
+get_recommend_movie, sim_indices = get_recommendations(input_movie)
 print("=========Movie Description Based Recommender=========")
-print(get_recommendations('Mean Girls'))
+print(">> Recommend a movie similar to \'{0}\'" .format(input_movie))
+for i in range(len(sim_indices)):
+    print('Rank {0} movie: \"{1}\" (with similarity of {2})'.format(i + 1, get_recommend_movie[i], round(sim_indices[i], 3)))
 print("=====================================================\n")
 
 
 # =========Metadata Based Recommender=========
-# 위의 추천 시스템은 단순히 Overview, Tagline만 보고 추천하는 것이기 때문에 별로임
-# 그래서 credit과 keyword를 column에 추가 (-> md.merge)
-
+'''
+parameter
+    md: Dataset of movies_metadata.csv
+   smd: links_small and md combined dataset
+return
+    md: Add credit and keyword columns to existing md dataset
+    smd: Recognize expressions in cast, crew, and keyword columns and apply them to existing smd datasets
+'''
 def meta_based(md,smd):
     credits = pd.read_csv('./data/credits.csv')
     keywords = pd.read_csv('./data/keywords.csv')
@@ -98,14 +136,22 @@ def meta_based(md,smd):
 
 md, smd = meta_based(md, smd)
 
-def get_director(x):
-    for i in x:
-        if i['job'] == 'Director':
-            return i['name']
-    return np.nan
 
-
+'''
+parameter
+    smd: smd dataset returned by meta_based function
+return
+    s: Calculates the frequency of a keyword and stores only values with a value of 1 or more
+    smd: smd modified
+    stemmer: Use the snowballstemmer function that makes all words basic
+'''
 def modify_smd(smd):
+    def get_director(x):
+        for i in x:
+            if i['job'] == 'Director':
+                return i['name']
+        return np.nan
+
     smd['director'] = smd['crew'].apply(get_director)
     smd['cast'] = smd['cast'].apply(lambda x: [i['name'] for i in x] if isinstance(x, list) else [])
     smd['cast'] = smd['cast'].apply(lambda x: x[:3] if len(x) >= 3 else x)
@@ -117,10 +163,10 @@ def modify_smd(smd):
     s = smd.apply(lambda x: pd.Series(x['keywords']), axis=1).stack().reset_index(level=1, drop=True)
     s.name = 'keyword'
     s = s.value_counts()
-    s = s[s > 1]  # 한번도 사용되지 않은 키워드는 삭제
+    s = s[s > 1]
 
     stemmer = SnowballStemmer('english')
-    # stemmer.stem('dogs')  # 그냥 dog로 출력하게 함 (다른 단어들도 마찬가지, 다 기본형으로)
+    # stemmer.stem('dogs')
 
     return s, smd, stemmer
 
@@ -128,6 +174,10 @@ def modify_smd(smd):
 s, smd, stemmer = modify_smd(smd)
 
 
+'''
+return
+    words: Save the keywords
+'''
 def filter_keywords(x):
     words = []
     for i in x:
@@ -135,6 +185,15 @@ def filter_keywords(x):
             words.append(i)
     return words
 
+'''
+parameter
+    smd: smd modified by function of modify_smd
+return
+    smd: smd modified
+    count: Count Vectorize
+    count_matrix: Calculate and Save count
+    cosine_sim: Calculate cosine similarity
+'''
 def modify_smd2(smd):
     smd['keywords'] = smd['keywords'].apply(filter_keywords)
     smd['keywords'] = smd['keywords'].apply(lambda x: [stemmer.stem(i) for i in x])
@@ -154,6 +213,13 @@ def modify_smd2(smd):
 smd, count, count_matrix, cosine_sim = modify_smd2(smd)
 
 
+'''
+parameter
+    md: Datasets with credit and keyword columns added to existing md datasets
+return
+    m: The minimum votes required to be listed in the chart
+    C: The mean vote across the whole report
+'''
 def popularityNratings(md):
     vote_counts = md[md['vote_count'].notnull()]['vote_count'].astype('int')
     vote_averages = md[md['vote_average'].notnull()]['vote_average'].astype('int')
@@ -163,15 +229,23 @@ def popularityNratings(md):
     return m, C
 
 
-m, C = popularityNratings(md)
-
-
+'''
+return
+    (v/(v+m) * R) + (m/(m+v) * C): Calculate weighted rating score
+'''
 def weighted_rating(x):
     v = x['vote_count']
     R = x['vote_average']
     return (v/(v+m) * R) + (m/(m+v) * C)
 
 
+'''
+parameter 
+    title: Movie's title
+return
+    title_indices: List of recommended movies
+    wr_indices: Weighted rating score corresponding to title_indices
+'''
 def improved_recommendations(title):
     idx = indices[title]
     sim_scores = list(enumerate(cosine_sim[idx]))
@@ -184,16 +258,32 @@ def improved_recommendations(title):
     vote_averages = movies[movies['vote_average'].notnull()]['vote_average'].astype('int')
     C = vote_averages.mean()
     m = vote_counts.quantile(0.60)
+
     qualified = movies[(movies['vote_count'] >= m) & (movies['vote_count'].notnull()) & (movies['vote_average'].notnull())]
     qualified['vote_count'] = qualified['vote_count'].astype('int')
     qualified['vote_average'] = qualified['vote_average'].astype('int')
     qualified['wr'] = qualified.apply(weighted_rating, axis=1)
     qualified = qualified.sort_values('wr', ascending=False).head(10)
-    return qualified
 
+    pd.DataFrame(qualified, columns=['A'])
+    title_indices = []
+    wr_indices = []
+    for i in range(len(qualified)):
+        title_indices.append(qualified.iloc[i][0])
+        wr_indices.append(qualified.iloc[i][4])
+
+    return title_indices, wr_indices
+
+
+m, C = popularityNratings(md)
+
+input_movie = "Mean Girls"
+title_indices, wr_indices = improved_recommendations(input_movie)
 
 print("=============Metadata Based Recommender=============")
-print(improved_recommendations('Mean Girls'))
+print(">> Recommend a movie similar to \'{0}\'" .format(input_movie))
+for i in range(len(title_indices)):
+    print('Rank {0} movie: \"{1}\" (with weighted ratings of {2})'.format(i + 1, title_indices[i], round(wr_indices[i], 3)))
 print("=====================================================\n")
 
 
@@ -298,6 +388,9 @@ def item_based(df_credit, df_rating, my_favorite):
         n_recommendations=10)
 
 
+
+
+
 ### For User-Based
 '''
 parameter
@@ -374,9 +467,11 @@ output
 '''
 def user_based(df_credit, df_rating, algo, userId):
     # create a file with both index and header removed
-    df_rating.to_csv('./data/ratings_small_noh.csv', index=False, header=False)
+
+    df_rating.to_csv('./input/ratings_small_noh.csv', index=False, header=False)
     reader = Reader(line_format='user item rating', sep=',', rating_scale=(0.5, 5))
-    data_folds = DatasetAutoFolds(ratings_file='./data/ratings_small_noh.csv', reader=reader)
+    data_folds = DatasetAutoFolds(ratings_file='./input/ratings_small_noh.csv', reader=reader)
+
     train = data_folds.build_full_trainset()
 
     if algo == "baseline":  # if the input algorithm is 'BaselineOnly'
