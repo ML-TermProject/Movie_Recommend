@@ -25,10 +25,10 @@ return
    smd: links_small and md combined dataset
 '''
 def read_file():
-    links_small = pd.read_csv('./data/links_small.csv')
+    links_small = pd.read_csv('../data/movies/links_small.csv')
     links_small = links_small[links_small['tmdbId'].notnull()]['tmdbId'].astype('int')
 
-    md = pd.read_csv('./data/movies_metadata.csv')
+    md = pd.read_csv('../data/movies/movies_metadata.csv')
     md['genres'] = md['genres'].fillna('[]').apply(literal_eval).apply(
         lambda x: [i['name'] for i in x] if isinstance(x, list) else [])
     md['year'] = pd.to_datetime(md['release_date'], errors='coerce').apply(
@@ -97,11 +97,11 @@ titles, indices, cosine_sim = description_based(smd)
 
 input_movie = 'Mean Girls'
 get_recommend_movie, sim_indices = get_recommendations(input_movie)
-print("========= Movie Description Based Recommender =========")
+print("==== Movie Description Based Recommender =====================")
 print(">> Recommend a movie similar to \'{0}\'" .format(input_movie))
 for i in range(len(sim_indices)):
     print('Rank {0} movie: \"{1}\" (with similarity of {2})'.format(i + 1, get_recommend_movie[i], round(sim_indices[i], 3)))
-print("=====================================================\n")
+print("=============================================================\n")
 
 
 # =========Metadata Based Recommender=========
@@ -114,8 +114,8 @@ return
     smd: Recognize expressions in cast, crew, and keyword columns and apply them to existing smd datasets
 '''
 def meta_based(md,smd):
-    credits = pd.read_csv('./data/credits.csv')
-    keywords = pd.read_csv('./data/keywords.csv')
+    credits = pd.read_csv('../data/movies/credits.csv')
+    keywords = pd.read_csv('../data/movies/keywords.csv')
 
     keywords['id'] = keywords['id'].astype('int')
     credits['id'] = credits['id'].astype('int')
@@ -282,11 +282,11 @@ m, C = popularityNratings(md)
 input_movie = "Mean Girls"
 title_indices, wr_indices = improved_recommendations(input_movie)
 
-print("============= Metadata Based Recommender =============")
+print("==== Metadata Based Recommender ===========================")
 print(">> Recommend a movie similar to \'{0}\'" .format(input_movie))
 for i in range(len(title_indices)):
     print('Rank {0} movie: \"{1}\" (with weighted ratings of {2})'.format(i + 1, title_indices[i], round(wr_indices[i], 3)))
-print("=====================================================\n")
+print("=============================================================\n")
 
 
 ### For Item-Based
@@ -494,9 +494,9 @@ output
 def user_based(df_credit, df_rating, algo, userId):
     # create a file with both index and header removed
 
-    df_rating.to_csv('./input/ratings_small_noh.csv', index=False, header=False)
+    df_rating.to_csv('../data/movies/ratings_small_noh.csv', index=False, header=False)
     reader = Reader(line_format='user item rating', sep=',', rating_scale=(0.5, 5))
-    data_folds = DatasetAutoFolds(ratings_file='./input/ratings_small_noh.csv', reader=reader)
+    data_folds = DatasetAutoFolds(ratings_file='../data/movies/ratings_small_noh.csv', reader=reader)
 
     train = data_folds.build_full_trainset()
 
@@ -522,12 +522,12 @@ def user_based(df_credit, df_rating, algo, userId):
 # Read dataset for collaborative filtering (item/user-based)
 def read_file():
     # read csv files
-    metadata = pd.read_csv("./data/movies_metadata.csv",
+    metadata = pd.read_csv("../data/movies/movies_metadata.csv",
                            usecols=['id', 'imdb_id', 'original_title'],
                            dtype={'id': 'str', 'imdb': 'str', 'original_title': 'str'})
-    link = pd.read_csv("./data/links_small.csv",
+    link = pd.read_csv("../data/movies/links_small.csv",
                        usecols=['movieId', 'imdbId', 'tmdbId'])
-    rating = pd.read_csv("./data/ratings_small.csv",
+    rating = pd.read_csv("../data/movies/ratings_small.csv",
                          usecols=['userId', 'movieId', 'rating'],
                          dtype={'userId': 'int32', 'movieId': 'int32', 'rating': 'float32'})
 
@@ -559,11 +559,11 @@ item_based(credit, rating, "Iron Man")
 print("===================================================================\n")
 
 # Collaborative Filtering (user-based)
-print("==== User-Based Recommendation (Collaborative Filtering) ====\n")
+print("==== User-Based Recommendation (Collaborative Filtering) =====")
 print(">> algorithm: BaselineOnly")
 print(">> userId: 9\n")
 user_based(credit, rating, 'baseline', 9) # algorithm: BaselineOnly, userId: 9
-print("===================================================================\n")
+print("-------------------------------------------------------------------\n")
 
 print(">> algorithm: SVD")
 print(">> userId: 3\n")
