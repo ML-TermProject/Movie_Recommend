@@ -506,6 +506,8 @@ def user_based(df_credit, df_rating, algo, userId):
         Algo = SVD(n_epochs=20, n_factors=50, random_state=42)
 
     Algo.fit(train)
+
+    # evaluation
     cross_validate(Algo, data_folds, measures=['RMSE', 'MAE'], cv=5, verbose=True)
 
     # get non-rated movie list and top_n movies of expected rating to recommend
