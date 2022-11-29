@@ -15,12 +15,12 @@ return
     rating: columns['userId', 'movieId', 'rating']
 '''
 def read_file():
-    metadata = pd.read_csv("./movies_metadata.csv",
+    metadata = pd.read_csv("./input/movies_metadata.csv",
                            usecols=['id', 'imdb_id', 'original_title'],
                            dtype={'id': 'str', 'imdb': 'str', 'original_title': 'str'})
-    link = pd.read_csv("./links_small.csv",
+    link = pd.read_csv("./input/links_small.csv",
                        usecols=['movieId', 'imdbId', 'tmdbId'])
-    rating = pd.read_csv("./ratings_small.csv",
+    rating = pd.read_csv("./input/ratings_small.csv",
                          usecols=['userId', 'movieId', 'rating'],
                          dtype={'userId': 'int32', 'movieId': 'int32', 'rating': 'float32'})
 
