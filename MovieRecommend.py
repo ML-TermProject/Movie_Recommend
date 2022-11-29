@@ -25,11 +25,11 @@ return
    smd: links_small and md combined dataset
 '''
 def read_file_content():
-    links_small = pd.read_csv('../data/movies/links_small.csv')
+    links_small = pd.read_csv('./input/links_small.csv')
     links_small = links_small[links_small['tmdbId'].notnull()]['tmdbId'].astype('int')
 
     # preprocessing
-    md = pd.read_csv('../data/movies/movies_metadata.csv')
+    md = pd.read_csv('./input/movies_metadata.csv')
     md['genres'] = md['genres'].fillna('[]').apply(literal_eval).apply(
         lambda x: [i['name'] for i in x] if isinstance(x, list) else [])
     md['year'] = pd.to_datetime(md['release_date'], errors='coerce').apply(
@@ -87,24 +87,15 @@ def get_recommendations(title):
     pd.DataFrame(titles, columns=['A'])
     movie_title_indices = []
     sim_indices = []
+
     for i in range(len(titles.iloc[movie_indices])):
         movie_title_indices.append(titles.iloc[movie_indices].iloc[i])
         sim_indices.append(sim_scores[i][1])
-
-    return movie_title_indices, sim_indices
+        print('Rank {0} movie: \"{1}\" (with similarity of {2})'.format(i + 1, movie_title_indices[i], round(sim_indices[i], 3)))
 
 
 links_small, md, smd = read_file_content()
 titles, indices, cosine_sim = description_based(smd)
-
-input_movie = 'Mean Girls'
-get_recommend_movie, sim_indices = get_recommendations(input_movie)
-print("==== Movie Description Based Recommender =====================")
-print(">> Recommend a movie similar to \'{0}\'" .format(input_movie))
-for i in range(len(sim_indices)):
-    print('Rank {0} movie: \"{1}\" (with similarity of {2})'.format(i + 1, get_recommend_movie[i], round(sim_indices[i], 3)))
-print("=============================================================\n")
-
 
 # =========Metadata Based Recommender=========
 '''
@@ -116,8 +107,8 @@ return
     smd: Recognize expressions in cast, crew, and keyword columns and apply them to existing smd datasets
 '''
 def meta_based(md,smd):
-    credits = pd.read_csv('../data/movies/credits.csv')
-    keywords = pd.read_csv('../data/movies/keywords.csv')
+    credits = pd.read_csv('./input/credits.csv')
+    keywords = pd.read_csv('./input/keywords.csv')
 
     # preprocessing
     keywords['id'] = keywords['id'].astype('int')
@@ -247,9 +238,6 @@ def weighted_rating(x):
 '''
 parameter 
     title: Movie's title
-return
-    title_indices: List of recommended movies
-    wr_indices: Weighted rating score corresponding to title_indices
 '''
 def improved_recommendations(title):
     idx = indices[title]
@@ -273,24 +261,13 @@ def improved_recommendations(title):
     pd.DataFrame(qualified, columns=['A'])
     title_indices = []
     wr_indices = []
+
     for i in range(len(qualified)):
         title_indices.append(qualified.iloc[i][0])
         wr_indices.append(qualified.iloc[i][4])
-
-    return title_indices, wr_indices
-
+        print('Rank {0} movie: \"{1}\" (with weighted ratings of {2})'.format(i + 1, title_indices[i], round(wr_indices[i], 3)))
 
 m, C = popularityNratings(md)
-
-input_movie = "Mean Girls"
-title_indices, wr_indices = improved_recommendations(input_movie)
-
-print("==== Metadata Based Recommender ===========================")
-print(">> Recommend a movie similar to \'{0}\'" .format(input_movie))
-for i in range(len(title_indices)):
-    print('Rank {0} movie: \"{1}\" (with weighted ratings of {2})'.format(i + 1, title_indices[i], round(wr_indices[i], 3)))
-print("=============================================================\n")
-
 
 ### For Item-Based
 '''
@@ -474,6 +451,7 @@ def recomm_movie(df_credit, Algo, userId, unseen_movies, top_n=10):
     return top_movie_preds
 
 
+
 # function for algorithm 'BaselineOnly'
 def Baseline(data):
     bsl_options = {
@@ -497,9 +475,9 @@ output
 def user_based(df_credit, df_rating, algo, userId):
     # create a file with both index and header removed
 
-    df_rating.to_csv('../data/movies/ratings_small_noh.csv', index=False, header=False)
+    df_rating.to_csv('./input/ratings_small_noh.csv', index=False, header=False)
     reader = Reader(line_format='user item rating', sep=',', rating_scale=(0.5, 5))
-    data_folds = DatasetAutoFolds(ratings_file='../data/movies/ratings_small_noh.csv', reader=reader)
+    data_folds = DatasetAutoFolds(ratings_file='./input/ratings_small_noh.csv', reader=reader)
 
     train = data_folds.build_full_trainset()
 
@@ -557,12 +535,12 @@ def data_statistic(df_metadata, df_credit, df_rating):
 # Read dataset for collaborative filtering (item/user-based)
 def read_file_collabo():
     # read csv files
-    metadata = pd.read_csv("../data/movies/movies_metadata.csv",
+    metadata = pd.read_csv("./input/movies_metadata.csv",
                            usecols=['id', 'imdb_id', 'original_title', 'vote_average', 'vote_count'],
                            dtype={'id': 'str', 'imdb': 'str', 'original_title': 'str', 'vote_average': 'str', 'vote_count': 'str'})
-    link = pd.read_csv("../data/movies/links_small.csv",
+    link = pd.read_csv("./input/links_small.csv",
                        usecols=['movieId', 'imdbId', 'tmdbId'])
-    rating = pd.read_csv("../data/movies/ratings_small.csv",
+    rating = pd.read_csv("./input/ratings_small.csv",
                          usecols=['userId', 'movieId', 'rating'],
                          dtype={'userId': 'int32', 'movieId': 'int32', 'rating': 'float32'})
 
@@ -600,6 +578,16 @@ credit, rating = read_file_collabo()  # Read dataset for Collaborative Filtering
 
 ### Test
 # Content-based Filtering
+input_movie = 'Mean Girls'
+print("==== Movie Description Based Recommender =====================")
+print(">> Recommend a movie similar to \'{0}\'".format(input_movie))
+get_recommendations(input_movie)
+print("=============================================================\n")
+
+print("==== Metadata Based Recommender =====================")
+print(">> Recommend a movie similar to \'{0}\'".format(input_movie))
+improved_recommendations(input_movie)
+print("=============================================================\n")
 
 # Collaborative Filtering (item-based)
 print("==== Item-Based Recommendation (Collaborative Filtering) =====")
