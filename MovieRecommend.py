@@ -12,7 +12,7 @@ from sklearn.metrics.pairwise import linear_kernel, cosine_similarity
 from nltk.stem.snowball import SnowballStemmer
 import warnings
 warnings.filterwarnings(action='ignore')
-
+np.set_printoptions(linewidth=np.inf)
 pd.options.display.max_columns = None
 pd.options.display.width = None
 
@@ -24,13 +24,12 @@ return
    md: Dataset of movies_metadata.csv
    smd: links_small and md combined dataset
 '''
-def read_file():
+def read_file_content():
     links_small = pd.read_csv('../data/movies/links_small.csv')
     links_small = links_small[links_small['tmdbId'].notnull()]['tmdbId'].astype('int')
 
     # preprocessing
-    md = pd.read_csv('./input/movies_metadata.csv')
-    
+    md = pd.read_csv('../data/movies/movies_metadata.csv')
     md['genres'] = md['genres'].fillna('[]').apply(literal_eval).apply(
         lambda x: [i['name'] for i in x] if isinstance(x, list) else [])
     md['year'] = pd.to_datetime(md['release_date'], errors='coerce').apply(
@@ -39,7 +38,6 @@ def read_file():
     md['id'] = md['id'].astype('int')
 
     smd = md[md['id'].isin(links_small)]
-    # -----------------------------------------------
 
     return links_small, md, smd
 
@@ -58,7 +56,6 @@ def description_based(smd):
     smd['tagline'] = smd['tagline'].fillna('')
     smd['description'] = smd['overview'] + smd['tagline']
     smd['description'] = smd['description'].fillna('')
-    # -----------------------------------------------
 
     tf = TfidfVectorizer(analyzer='word', ngram_range=(1, 2), min_df=0, stop_words='english')
     tfidf_matrix = tf.fit_transform(smd['description'])
@@ -97,7 +94,7 @@ def get_recommendations(title):
     return movie_title_indices, sim_indices
 
 
-links_small, md, smd = read_file()
+links_small, md, smd = read_file_content()
 titles, indices, cosine_sim = description_based(smd)
 
 input_movie = 'Mean Girls'
@@ -137,7 +134,6 @@ def meta_based(md,smd):
     smd['keywords'] = smd['keywords'].apply(literal_eval)
     smd['cast_size'] = smd['cast'].apply(lambda x: len(x))
     smd['crew_size'] = smd['crew'].apply(lambda x: len(x))
-    # -----------------------------------------------
 
     return md, smd
 
@@ -330,19 +326,17 @@ parameter
     data: user information data
     mapper: index for each movies
     fav_movie: input movie for predict
-    n_recommendations: 10 (nearest neighbors)
+    n_recommendations: 10 (nearest neighbor)
 '''
 def make_recommendation(model_knn, data, mapper, fav_movie, n_recommendations):
     # Recommendation model K-nearest neighbors
     model_knn.fit(data)  # train the model
-    print("==== Item-Based Recommendation (Collaborative Filtering) =====")
     print('>> You say your favorite movie is {}\n'.format(fav_movie))
     idx = fuzzy_matching(mapper, fav_movie, verbose=True)  # Get input movie index
 
     distances, indices = model_knn.kneighbors(data[idx], n_neighbors=n_recommendations + 1)  # Calculate the distance
 
-    # Using distance
-    raw_recommends = sorted(list(zip(indices.squeeze().tolist(), distances.squeeze().tolist())), key=lambda x: x[1])[:0:-1]
+    raw_recommends = sorted(list(zip(indices.squeeze().tolist(), distances.squeeze().tolist())), key=lambda x: x[1])[:0:-1]  # Using distance
 
     reverse_mapper = {v: k for k, v in mapper.items()}  # Get reverse mapper
     print('>> Recommendations for {}:'.format(fav_movie))  # Print recommendation results
@@ -404,18 +398,12 @@ def process_data(df_credit, df_rating):
     return movie_user_mat, movie_to_idx
 
 
-=======
-
 '''
 parameter
     df_credit: credit (it has information of 'title', 'movieId')
     df_rating: rating (it has information of 'userId', 'movieId', 'rating')
     my_favorite: input movie for predict
 '''
-
-# Recommendation System for collaborative filtering (item-based)
-=======
-
 def item_based(df_credit, df_rating, my_favorite):
     # Recommendation System for collaborative filtering (item-based)
     user_matrix, movie_idx = process_data(df_credit, df_rating)  # Preprocess the data for item-based filtering
@@ -504,6 +492,7 @@ parameter
     algo: recommendation algorithm {BaselineOnly, SVD}
     userId: user ID to be used in user-based collaborative filtering
 output
+    top_n movies to recommend for userId
 '''
 def user_based(df_credit, df_rating, algo, userId):
     # create a file with both index and header removed
@@ -520,9 +509,7 @@ def user_based(df_credit, df_rating, algo, userId):
         Algo = SVD(n_epochs=20, n_factors=50, random_state=42)
 
     Algo.fit(train)
-
-    # evaluation
-    cross_validate(Algo, data_folds, measures=['RMSE', 'MAE'], cv=5, verbose=True)
+    cross_validate(Algo, data_folds, measures=['RMSE', 'MAE'], cv=5, verbose=True)  # evaluation
 
     # get non-rated movie list and top_n movies of expected rating to recommend
     unseen_lst = get_unseen(df_rating, df_credit, userId)
@@ -535,21 +522,61 @@ def user_based(df_credit, df_rating, algo, userId):
         i += 1
 
 
+# Data exploration - description
+def data_statistic(df_metadata, df_credit, df_rating):
+    print("==== Data Describe ===========================================")
+
+    print(">> metadata.csv")
+    print(df_metadata.head())
+    print()
+    print(df_metadata.info())
+    print()
+    print(f">> minimum vote_average = {df_metadata['vote_average'].min()}, maximum vote_average = {df_metadata['vote_average'].max()}")
+    print(f">> minimum vote_count = {df_metadata['vote_count'].min()}, maximum vote_count = {df_metadata['vote_count'].max()}")
+    print("--------------------------------------------------------------\n")
+
+    print(">> rating.csv")
+    print(df_credit.head())
+    print()
+    print(df_credit.info())
+    print()
+    for col in df_credit:
+        print(f">> unique value of {col}: {df_credit[col].unique()}")
+    print()
+    print(df_rating.head())
+    print()
+    print(df_rating.info())
+    print()
+    print(f">> minimum rating = {df_rating['rating'].min()}, maximum rating = {df_rating['rating'].max()}")
+
+    for i in df_rating['userId'].unique()[:5]:
+        get_unseen(df_rating, df_credit, i)
+    print("==============================================================\n")
+
+
 # Read dataset for collaborative filtering (item/user-based)
-def read_file():
+def read_file_collabo():
     # read csv files
     metadata = pd.read_csv("../data/movies/movies_metadata.csv",
-                           usecols=['id', 'imdb_id', 'original_title'],
-                           dtype={'id': 'str', 'imdb': 'str', 'original_title': 'str'})
+                           usecols=['id', 'imdb_id', 'original_title', 'vote_average', 'vote_count'],
+                           dtype={'id': 'str', 'imdb': 'str', 'original_title': 'str', 'vote_average': 'str', 'vote_count': 'str'})
     link = pd.read_csv("../data/movies/links_small.csv",
                        usecols=['movieId', 'imdbId', 'tmdbId'])
     rating = pd.read_csv("../data/movies/ratings_small.csv",
                          usecols=['userId', 'movieId', 'rating'],
                          dtype={'userId': 'int32', 'movieId': 'int32', 'rating': 'float32'})
 
+    # preprocessing
+    original_metadata = metadata.copy()
+    original_metadata = original_metadata.astype({'vote_average': 'float32', 'vote_count': 'float32'})
+    original_metadata.dropna(inplace=True)
+
     # drop not integer value and set data type correctly
+    metadata.drop(columns=['vote_average', 'vote_count'], inplace=True)
     metadata = metadata[metadata.id.str.isnumeric()]
     metadata = metadata.astype({'id': 'int32'})
+    metadata.dropna(inplace=True)
+
     link.dropna(inplace=True)
     link = link.astype({'tmdbId': 'int32'})
 
@@ -557,31 +584,36 @@ def read_file():
     credit = pd.merge(metadata, link, how='right', left_on='id', right_on='tmdbId')
     credit.drop(columns=['id', 'imdb_id', 'tmdbId', 'imdbId'], inplace=True)
     credit.columns = ['title', 'movieId']
+    credit.dropna(inplace=True)
 
     rating = pd.merge(credit, rating, how='left').drop(columns='title')
     rating = rating[['userId', 'movieId', 'rating']]
     rating.dropna(inplace=True)
+    rating = rating.astype({'userId': 'int'})
+
+    data_statistic(original_metadata, credit, rating)  # describe
 
     return credit, rating
 
 
-credit, rating = read_file()  # Read dataset for Collaborative Filtering
+credit, rating = read_file_collabo()  # Read dataset for Collaborative Filtering
 
 ### Test
 # Content-based Filtering
 
 # Collaborative Filtering (item-based)
+print("==== Item-Based Recommendation (Collaborative Filtering) =====")
 item_based(credit, rating, "Iron Man")
-print("===================================================================\n")
+print("==============================================================\n")
 
 # Collaborative Filtering (user-based)
 print("==== User-Based Recommendation (Collaborative Filtering) =====")
 print(">> algorithm: BaselineOnly")
 print(">> userId: 9\n")
 user_based(credit, rating, 'baseline', 9) # algorithm: BaselineOnly, userId: 9
-print("-------------------------------------------------------------------\n")
+print("---------------------------------------------------------------\n")
 
 print(">> algorithm: SVD")
 print(">> userId: 3\n")
 user_based(credit, rating, 'SVD', 3) # algorithm: SVD, userId: 3
-print("===================================================================\n")
+print("===============================================================\n")
