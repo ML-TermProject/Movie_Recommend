@@ -316,6 +316,14 @@ def fuzzy_matching(mapper, fav_movie, verbose=True):
 
 
 # Recommendation model K-nearest neighbors
+'''
+parameter
+    model_knn: KNN model
+    data: user information data
+    mapper: index for each movies
+    fav_movie: input movie for predict
+    n_recommendations: 10 (nearest neighbors)
+'''
 def make_recommendation(model_knn, data, mapper, fav_movie, n_recommendations):
     model_knn.fit(data)  # train the model
     print("==== Item-Based Recommendation (Collaborative Filtering) =====")
