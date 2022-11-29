@@ -27,6 +27,7 @@ def read_file():
     links_small = pd.read_csv('./input/links_small.csv')
     links_small = links_small[links_small['tmdbId'].notnull()]['tmdbId'].astype('int')
 
+    # preprocessing
     md = pd.read_csv('./input/movies_metadata.csv')
     md['genres'] = md['genres'].fillna('[]').apply(literal_eval).apply(
         lambda x: [i['name'] for i in x] if isinstance(x, list) else [])
@@ -36,6 +37,7 @@ def read_file():
     md['id'] = md['id'].astype('int')
 
     smd = md[md['id'].isin(links_small)]
+    # -----------------------------------------------
 
     return links_small, md, smd
 
@@ -50,9 +52,11 @@ return
     cosine_sim: Cosine similarity calculated using linear kernel
 '''
 def description_based(smd):
+    # preprocessing
     smd['tagline'] = smd['tagline'].fillna('')
     smd['description'] = smd['overview'] + smd['tagline']
     smd['description'] = smd['description'].fillna('')
+    # -----------------------------------------------
 
     tf = TfidfVectorizer(analyzer='word', ngram_range=(1, 2), min_df=0, stop_words='english')
     tfidf_matrix = tf.fit_transform(smd['description'])
@@ -116,6 +120,7 @@ def meta_based(md,smd):
     credits = pd.read_csv('./input/credits.csv')
     keywords = pd.read_csv('./input/keywords.csv')
 
+    # preprocessing
     keywords['id'] = keywords['id'].astype('int')
     credits['id'] = credits['id'].astype('int')
     md['id'] = md['id'].astype('int')
@@ -130,6 +135,7 @@ def meta_based(md,smd):
     smd['keywords'] = smd['keywords'].apply(literal_eval)
     smd['cast_size'] = smd['cast'].apply(lambda x: len(x))
     smd['crew_size'] = smd['crew'].apply(lambda x: len(x))
+    # -----------------------------------------------
 
     return md, smd
 
@@ -318,7 +324,8 @@ def make_recommendation(model_knn, data, mapper, fav_movie, n_recommendations):
 
     distances, indices = model_knn.kneighbors(data[idx], n_neighbors=n_recommendations + 1)  # Calculate the distance
 
-    raw_recommends = sorted(list(zip(indices.squeeze().tolist(), distances.squeeze().tolist())), key=lambda x: x[1])[:0:-1]  # Using distance
+    # Using distance
+    raw_recommends = sorted(list(zip(indices.squeeze().tolist(), distances.squeeze().tolist())), key=lambda x: x[1])[:0:-1]
 
     reverse_mapper = {v: k for k, v in mapper.items()}  # Get reverse mapper
     print('>> Recommendations for {}:'.format(fav_movie))  # Print recommendation results
@@ -372,7 +379,12 @@ def process_data(df_credit, df_rating):
 
     return movie_user_mat, movie_to_idx
 
-
+'''
+parameter
+    df_credit: credit (it has information of 'title', 'movieId')
+    df_rating: rating (it has information of 'userId', 'movieId', 'rating')
+    my_favorite: input movie for predict
+'''
 # Recommendation System for collaborative filtering (item-based)
 def item_based(df_credit, df_rating, my_favorite):
     user_matrix, movie_idx = process_data(df_credit, df_rating)  # Preprocess the data for item-based filtering
