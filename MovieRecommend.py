@@ -25,10 +25,10 @@ return
    smd: links_small and md combined dataset
 '''
 def read_file_content():
-    links_small = pd.read_csv('./input/links_small.csv')
+    links_small = pd.read_csv('./data/links_small.csv')
     links_small = links_small[links_small['tmdbId'].notnull()]['tmdbId'].astype('int')
 
-    md = pd.read_csv('./input/movies_metadata.csv')
+    md = pd.read_csv('./data/movies_metadata.csv')
     md['genres'] = md['genres'].fillna('[]').apply(literal_eval).apply(
         lambda x: [i['name'] for i in x] if isinstance(x, list) else [])
     md['year'] = pd.to_datetime(md['release_date'], errors='coerce').apply(
@@ -106,8 +106,8 @@ return
     smd: Recognize expressions in cast, crew, and keyword columns and apply them to existing smd datasets
 '''
 def meta_based(md,smd):
-    credits = pd.read_csv('./input/credits.csv')
-    keywords = pd.read_csv('./input/keywords.csv')
+    credits = pd.read_csv('./data/credits.csv')
+    keywords = pd.read_csv('./data/keywords.csv')
 
     # preprocessing
     keywords['id'] = keywords['id'].astype('int')
@@ -474,9 +474,9 @@ output
 def user_based(df_credit, df_rating, algo, userId):
     # create a file with both index and header removed
 
-    df_rating.to_csv('./input/ratings_small_noh.csv', index=False, header=False)
+    df_rating.to_csv('./data/ratings_small_noh.csv', index=False, header=False)
     reader = Reader(line_format='user item rating', sep=',', rating_scale=(0.5, 5))
-    data_folds = DatasetAutoFolds(ratings_file='./input/ratings_small_noh.csv', reader=reader)
+    data_folds = DatasetAutoFolds(ratings_file='./data/ratings_small_noh.csv', reader=reader)
 
     train = data_folds.build_full_trainset()
 
@@ -534,12 +534,12 @@ def data_statistic(df_metadata, df_credit, df_rating):
 # Read dataset for collaborative filtering (item/user-based)
 def read_file_collabo():
     # read csv files
-    metadata = pd.read_csv("./input/movies_metadata.csv",
+    metadata = pd.read_csv("./data/movies_metadata.csv",
                            usecols=['id', 'imdb_id', 'original_title', 'vote_average', 'vote_count'],
                            dtype={'id': 'str', 'imdb': 'str', 'original_title': 'str', 'vote_average': 'str', 'vote_count': 'str'})
-    link = pd.read_csv("./input/links_small.csv",
+    link = pd.read_csv("./data/links_small.csv",
                        usecols=['movieId', 'imdbId', 'tmdbId'])
-    rating = pd.read_csv("./input/ratings_small.csv",
+    rating = pd.read_csv("./data/ratings_small.csv",
                          usecols=['userId', 'movieId', 'rating'],
                          dtype={'userId': 'int32', 'movieId': 'int32', 'rating': 'float32'})
 
@@ -597,12 +597,23 @@ print("==============================================================\n")
 
 # Collaborative Filtering (user-based)
 print("==== User-Based Recommendation (Collaborative Filtering) =====")
-print(">> algorithm: BaselineOnly")
-print(">> userId: 9\n")
-user_based(credit, rating, 'baseline', 9) # algorithm: BaselineOnly, userId: 9
+
+print("ENTER ALGORITHM TO USE: ") # enter 'baseline' or 'SVD'
+user_based_algo = input()
+print("ENTER USER ID: ")
+userID = input()
+
+print(f">> algorithm: {user_based_algo}")
+print(f">> userId: {userID}\n")
+user_based(credit, rating, user_based_algo, userID)
 print("---------------------------------------------------------------\n")
 
-print(">> algorithm: SVD")
-print(">> userId: 3\n")
-user_based(credit, rating, 'SVD', 3) # algorithm: SVD, userId: 3
+print("ENTER ALGORITHM TO USE: ") # enter 'baseline' or 'SVD'
+user_based_algo = input()
+print("ENTER USER ID: ")
+userID = input()
+
+print(f">> algorithm: {user_based_algo}")
+print(f">> userId: {userID}\n")
+user_based(credit, rating, user_based_algo, userID)
 print("===============================================================\n")
