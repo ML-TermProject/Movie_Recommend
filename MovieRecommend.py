@@ -28,7 +28,6 @@ def read_file_content():
     links_small = pd.read_csv('./input/links_small.csv')
     links_small = links_small[links_small['tmdbId'].notnull()]['tmdbId'].astype('int')
 
-    # preprocessing
     md = pd.read_csv('./input/movies_metadata.csv')
     md['genres'] = md['genres'].fillna('[]').apply(literal_eval).apply(
         lambda x: [i['name'] for i in x] if isinstance(x, list) else [])
@@ -577,8 +576,10 @@ def read_file_collabo():
 credit, rating = read_file_collabo()  # Read dataset for Collaborative Filtering
 
 ### Test
+print("ENTER A MOVIE TITLE: ")
+input_movie = input()
+
 # Content-based Filtering
-input_movie = 'Mean Girls'
 print("==== Movie Description Based Recommender =====================")
 print(">> Recommend a movie similar to \'{0}\'".format(input_movie))
 get_recommendations(input_movie)
@@ -591,7 +592,7 @@ print("=============================================================\n")
 
 # Collaborative Filtering (item-based)
 print("==== Item-Based Recommendation (Collaborative Filtering) =====")
-item_based(credit, rating, "Iron Man")
+item_based(credit, rating, input_movie)
 print("==============================================================\n")
 
 # Collaborative Filtering (user-based)
