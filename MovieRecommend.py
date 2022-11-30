@@ -591,7 +591,7 @@ print("=============================================================\n")
 
 # Collaborative Filtering (item-based)
 print("==== Item-Based Recommendation (Collaborative Filtering) =====")
-item_based(credit, rating, "Iron Man")
+item_based(credit, rating, input_movie)
 print("==============================================================\n")
 
 # Collaborative Filtering (user-based)
