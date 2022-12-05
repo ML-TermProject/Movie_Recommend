@@ -598,22 +598,12 @@ print("==============================================================\n")
 # Collaborative Filtering (user-based)
 print("==== User-Based Recommendation (Collaborative Filtering) =====")
 
-print("ENTER ALGORITHM TO USE: ") # enter 'baseline' or 'SVD'
-user_based_algo = input()
 print("ENTER USER ID: ")
 userID = input()
 
-print(f">> algorithm: {user_based_algo}")
-print(f">> userId: {userID}\n")
-user_based(credit, rating, user_based_algo, userID)
-print("---------------------------------------------------------------\n")
-
-print("ENTER ALGORITHM TO USE: ") # enter 'baseline' or 'SVD'
-user_based_algo = input()
-print("ENTER USER ID: ")
-userID = input()
-
-print(f">> algorithm: {user_based_algo}")
-print(f">> userId: {userID}\n")
-user_based(credit, rating, user_based_algo, userID)
-print("===============================================================\n")
+algorithms = ['baseline', 'SVD']
+for i in algorithms:
+    print(f"\n>> algorithm: {i}")
+    print(f">> userId: {userID}\n")
+    user_based(credit, rating, i, userID)
+    print("---------------------------------------------------------------")
